@@ -8,8 +8,16 @@ import '../../services/chat_service.dart';
 import '../listings/edit_listing_page.dart';
 import '../threads/chat_screen.dart';
 
-class MyListingsPage extends StatelessWidget {
+class MyListingsPage extends StatefulWidget {
   const MyListingsPage({super.key});
+
+  @override
+  State<MyListingsPage> createState() => _MyListingsPageState();
+}
+
+class _MyListingsPageState extends State<MyListingsPage> {
+  // Track optimistic updates by swap ID
+  final _pendingStatusUpdates = <String, SwapStatus>{};
 
   @override
   Widget build(BuildContext context) {
@@ -122,47 +130,141 @@ class MyListingsPage extends StatelessWidget {
                                             ),
                                             if (isRecipient) ...[
                                               TextButton(
-                                                onPressed: () async {
-                                                  await svc.updateSwapStatusWithBooks(o.id, SwapStatus.rejected, o.listingId, o.offeredBookId);
-                                                  if (context.mounted) {
-                                                    ScaffoldMessenger.of(context).showSnackBar(
-                                                      const SnackBar(content: Text('Swap rejected. Books are now available.')),
-                                                    );
+                                                onPressed: _pendingStatusUpdates.containsKey(o.id) ? null : () async {
+                                                  // Show optimistic update
+                                                  setState(() => _pendingStatusUpdates[o.id] = SwapStatus.rejected);
+                                                  try {
+                                                    await svc.updateSwapStatusWithBooks(o.id, SwapStatus.rejected, o.listingId, o.offeredBookId);
+                                                    if (context.mounted) {
+                                                      setState(() => _pendingStatusUpdates.remove(o.id));
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        const SnackBar(content: Text('Swap rejected. Books are now available.')),
+                                                      );
+                                                    }
+                                                  } catch (e) {
+                                                    if (context.mounted) {
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        SnackBar(content: Text('Failed to reject swap: $e')),
+                                                      );
+                                                      // Revert optimistic update on failure
+                                                      setState(() => _pendingStatusUpdates.remove(o.id));
+                                                    }
                                                   }
                                                 },
-                                                child: const Text('Reject'),
+                                                child: _pendingStatusUpdates[o.id] == SwapStatus.rejected 
+                                                    ? const Row(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        children: [
+                                                          SizedBox(
+                                                            width: 12,
+                                                            height: 12,
+                                                            child: CircularProgressIndicator(strokeWidth: 2),
+                                                          ),
+                                                          SizedBox(width: 8),
+                                                          Text('Rejecting...'),
+                                                        ],
+                                                      )
+                                                    : const Text('Reject'),
                                               ),
                                               const SizedBox(width: 8),
                                               ElevatedButton(
-                                                onPressed: () async {
-                                                  await svc.updateSwapStatusWithBooks(o.id, SwapStatus.accepted, o.listingId, o.offeredBookId);
-                                                  // Books remain pending after acceptance (committed to swap)
-                                                  // Create chat thread
-                                                  await ChatService.instance.createThreadIfNotExists(o.senderId, o.recipientId);
-                                                  if (context.mounted) {
-                                                    ScaffoldMessenger.of(context).showSnackBar(
-                                                      const SnackBar(content: Text('Swap accepted! Chat available.')),
-                                                    );
+                                                onPressed: _pendingStatusUpdates.containsKey(o.id) ? null : () async {
+                                                  // Show optimistic update
+                                                  setState(() => _pendingStatusUpdates[o.id] = SwapStatus.accepted);
+                                                  try {
+                                                    await svc.updateSwapStatusWithBooks(o.id, SwapStatus.accepted, o.listingId, o.offeredBookId);
+                                                    // Books remain pending after acceptance (committed to swap)
+                                                    // Create chat thread
+                                                    await ChatService.instance.createThreadIfNotExists(o.senderId, o.recipientId);
+                                                    if (context.mounted) {
+                                                      setState(() => _pendingStatusUpdates.remove(o.id));
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        const SnackBar(content: Text('Swap accepted! Chat available.')),
+                                                      );
+                                                    }
+                                                  } catch (e) {
+                                                    if (context.mounted) {
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        SnackBar(content: Text('Failed to accept swap: $e')),
+                                                      );
+                                                      // Revert optimistic update on failure
+                                                      setState(() => _pendingStatusUpdates.remove(o.id));
+                                                    }
                                                   }
                                                 },
-                                                child: const Text('Accept'),
+                                                child: _pendingStatusUpdates[o.id] == SwapStatus.accepted
+                                                    ? const Row(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        children: [
+                                                          SizedBox(
+                                                            width: 12,
+                                                            height: 12,
+                                                            child: CircularProgressIndicator(
+                                                              strokeWidth: 2,
+                                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                                                            ),
+                                                          ),
+                                                          SizedBox(width: 8),
+                                                          Text('Accepting...'),
+                                                        ],
+                                                      )
+                                                    : const Text('Accept'),
                                               ),
                                             ] else if (isSender) ...[
                                               TextButton(
-                                                onPressed: () async {
-                                                  await svc.updateSwapStatusWithBooks(o.id, SwapStatus.cancelled, o.listingId, o.offeredBookId);
-                                                  if (context.mounted) {
-                                                    ScaffoldMessenger.of(context).showSnackBar(
-                                                      const SnackBar(content: Text('Swap cancelled. Books are now available.')),
-                                                    );
+                                                onPressed: _pendingStatusUpdates.containsKey(o.id) ? null : () async {
+                                                  // Show optimistic update
+                                                  setState(() => _pendingStatusUpdates[o.id] = SwapStatus.cancelled);
+                                                  try {
+                                                    await svc.updateSwapStatusWithBooks(o.id, SwapStatus.cancelled, o.listingId, o.offeredBookId);
+                                                    if (context.mounted) {
+                                                      setState(() => _pendingStatusUpdates.remove(o.id));
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        const SnackBar(content: Text('Swap cancelled. Books are now available.')),
+                                                      );
+                                                    }
+                                                  } catch (e) {
+                                                    if (context.mounted) {
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        SnackBar(content: Text('Failed to cancel swap: $e')),
+                                                      );
+                                                      // Revert optimistic update on failure
+                                                      setState(() => _pendingStatusUpdates.remove(o.id));
+                                                    }
                                                   }
                                                 },
-                                                child: const Text('Cancel'),
+                                                child: _pendingStatusUpdates[o.id] == SwapStatus.cancelled
+                                                    ? const Row(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        children: [
+                                                          SizedBox(
+                                                            width: 12,
+                                                            height: 12,
+                                                            child: CircularProgressIndicator(strokeWidth: 2),
+                                                          ),
+                                                          SizedBox(width: 8),
+                                                          Text('Cancelling...'),
+                                                        ],
+                                                      )
+                                                    : const Text('Cancel'),
                                               ),
                                             ],
                                           ],
                                         )
-                                      : Text(_statusLabel(o.status)),
+                                      : Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(_statusLabel(_pendingStatusUpdates[o.id] ?? o.status)),
+                                            if (_pendingStatusUpdates.containsKey(o.id)) ...[
+                                              const SizedBox(width: 8),
+                                              const SizedBox(
+                                                width: 12,
+                                                height: 12,
+                                                child: CircularProgressIndicator(strokeWidth: 2),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
                                 ),
                               );
                             },

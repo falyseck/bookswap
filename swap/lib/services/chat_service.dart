@@ -26,15 +26,22 @@ class ChatService {
   }
 
   Future<String> createThreadIfNotExists(String userA, String userB) async {
+    // Normalize participant ordering to make lookups deterministic
+    final participants = <String>[userA, userB]..sort();
+
     final existing = await _threads.where('participantIds', arrayContains: userA).get();
     for (final doc in existing.docs) {
       final ids = List<String>.from(doc.data()['participantIds'] ?? const []);
-      if (ids.toSet().containsAll([userA, userB]) && ids.length == 2) {
-        return doc.id;
+      if (ids.length == 2) {
+        final other = <String>[ids[0], ids[1]]..sort();
+        if (participants[0] == other[0] && participants[1] == other[1]) {
+          return doc.id;
+        }
       }
     }
+
     final ref = await _threads.add({
-      'participantIds': [userA, userB],
+      'participantIds': participants,
       'lastMessage': '',
       'updatedAt': FieldValue.serverTimestamp(),
     });

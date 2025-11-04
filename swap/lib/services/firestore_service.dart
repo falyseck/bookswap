@@ -142,17 +142,48 @@ class FirestoreService {
   Future<void> updateSwapStatusWithBooks(String swapId, SwapStatus status, String listingId, String offeredBookId) async {
     final batch = _db.batch();
     
-    // Update swap status
-    batch.update(_swaps.doc(swapId), {'status': swapStatusToString(status)});
+    // Update swap status (use set with merge to be robust if doc shape changed)
+    batch.set(_swaps.doc(swapId), {'status': swapStatusToString(status)}, SetOptions(merge: true));
     
-    // If rejected or cancelled, free both books
-    if (status == SwapStatus.rejected || status == SwapStatus.cancelled) {
-      batch.update(_listings.doc(listingId), {'pending': false});
-      batch.update(_listings.doc(offeredBookId), {'pending': false});
+    switch (status) {
+      case SwapStatus.accepted:
+        // When accepted, mark books as swapped and no longer pending
+        batch.update(_listings.doc(listingId), {
+          'pending': false,
+          'swapped': true,
+          'swappedAt': FieldValue.serverTimestamp(),
+          'swapId': swapId,
+        });
+        batch.update(_listings.doc(offeredBookId), {
+          'pending': false,
+          'swapped': true,
+          'swappedAt': FieldValue.serverTimestamp(),
+          'swapId': swapId,
+        });
+        break;
+        
+      case SwapStatus.rejected:
+      case SwapStatus.cancelled:
+        // Free both books to be available again
+        batch.update(_listings.doc(listingId), {'pending': false});
+        batch.update(_listings.doc(offeredBookId), {'pending': false});
+        break;
+        
+      case SwapStatus.pending:
+        // Keep books pending while swap is being processed
+        batch.update(_listings.doc(listingId), {'pending': true});
+        batch.update(_listings.doc(offeredBookId), {'pending': true});
+        break;
     }
-    // If accepted, books remain pending (committed to swap)
     
-    await batch.commit();
+    try {
+      await batch.commit();
+    } catch (e, st) {
+      // Surface useful debug info in logs; rethrow so callers can handle failures
+      // ignore: avoid_print
+      print('Failed to update swap status for $swapId: $e\n$st');
+      rethrow;
+    }
   }
 }
 

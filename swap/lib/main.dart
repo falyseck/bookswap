@@ -27,7 +27,25 @@ class MyApp extends StatelessWidget {
       ],
       child: MaterialApp(
         title: 'BookSwap',
-        theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple)),
+        theme: ThemeData(
+          useMaterial3: true,
+          brightness: Brightness.light,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFFFFD700), // Gold accent color
+            primary: const Color(0xFFFFD700),
+          ),
+        ),
+        darkTheme: ThemeData(
+          useMaterial3: true,
+          brightness: Brightness.dark,
+          scaffoldBackgroundColor: const Color(0xFF0A0E1F), // Dark navy background
+          colorScheme: ColorScheme.fromSeed(
+            brightness: Brightness.dark,
+            seedColor: const Color(0xFFFFD700), // Gold accent color
+            primary: const Color(0xFFFFD700),
+          ),
+        ),
+        themeMode: ThemeMode.dark, // Force dark theme
         home: const AuthGate(),
       ),
     );

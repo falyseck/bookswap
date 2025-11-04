@@ -26,15 +26,45 @@ class _AppScaffoldState extends State<AppScaffold> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: _pages[_index],
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.search), label: 'Browse'),
-          NavigationDestination(icon: Icon(Icons.library_books), label: 'My Listings'),
-          NavigationDestination(icon: Icon(Icons.chat_bubble_outline), label: 'Chats'),
-          NavigationDestination(icon: Icon(Icons.settings), label: 'Settings'),
-        ],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF0A0E1F),
+          border: Border(
+            top: BorderSide(
+              color: Colors.grey.withOpacity(0.1),
+              width: 0.5,
+            ),
+          ),
+        ),
+        child: NavigationBar(
+          height: 65,
+          backgroundColor: Colors.transparent,
+          indicatorColor: Colors.transparent,
+          selectedIndex: _index,
+          onDestinationSelected: (i) => setState(() => _index = i),
+          destinations: [
+            NavigationDestination(
+              icon: Icon(Icons.home_outlined, 
+                color: _index == 0 ? const Color(0xFFFFD700) : Colors.grey),
+              label: 'Home',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.library_books_outlined,
+                color: _index == 1 ? const Color(0xFFFFD700) : Colors.grey),
+              label: 'My Listings',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.chat_bubble_outline,
+                color: _index == 2 ? const Color(0xFFFFD700) : Colors.grey),
+              label: 'Chats',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.person_outline,
+                color: _index == 3 ? const Color(0xFFFFD700) : Colors.grey),
+              label: 'Profile',
+            ),
+          ],
+        ),
       ),
     );
   }

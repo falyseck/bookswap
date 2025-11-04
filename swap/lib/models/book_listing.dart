@@ -36,6 +36,9 @@ class BookListing {
   final BookCondition condition;
   final String? imageUrl;
   final bool pending; // true when part of a pending swap
+  final bool swapped; // true when swap is completed
+  final DateTime? swappedAt; // when the swap was completed
+  final String? swapId; // reference to the completed swap
   final DateTime createdAt;
 
   BookListing({
@@ -46,6 +49,9 @@ class BookListing {
     required this.condition,
     required this.imageUrl,
     required this.pending,
+    this.swapped = false,
+    this.swappedAt,
+    this.swapId,
     required this.createdAt,
   });
 
@@ -59,6 +65,9 @@ class BookListing {
       condition: conditionFromString((data['condition'] ?? 'used') as String),
       imageUrl: data['imageUrl'] as String?,
       pending: data['pending'] == true,
+      swapped: data['swapped'] == true,
+      swappedAt: (data['swappedAt'] as Timestamp?)?.toDate(),
+      swapId: data['swapId'] as String?,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
@@ -70,6 +79,9 @@ class BookListing {
         'condition': conditionToString(condition),
         'imageUrl': imageUrl,
         'pending': pending,
+        'swapped': swapped,
+        if (swappedAt != null) 'swappedAt': Timestamp.fromDate(swappedAt!),
+        if (swapId != null) 'swapId': swapId,
         'createdAt': Timestamp.fromDate(createdAt),
       };
 
@@ -81,6 +93,9 @@ class BookListing {
     BookCondition? condition,
     String? imageUrl,
     bool? pending,
+    bool? swapped,
+    DateTime? swappedAt,
+    String? swapId,
     DateTime? createdAt,
   }) {
     return BookListing(
@@ -91,6 +106,9 @@ class BookListing {
       condition: condition ?? this.condition,
       imageUrl: imageUrl ?? this.imageUrl,
       pending: pending ?? this.pending,
+      swapped: swapped ?? this.swapped,
+      swappedAt: swappedAt ?? this.swappedAt,
+      swapId: swapId ?? this.swapId,
       createdAt: createdAt ?? this.createdAt,
     );
   }
