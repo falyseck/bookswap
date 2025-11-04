@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../models/book_listing.dart';
 import '../../services/firestore_service.dart';
+import '../dialogs/select_book_dialog.dart';
 
 class BrowseListingsPage extends StatelessWidget {
   const BrowseListingsPage({super.key});
@@ -37,10 +38,25 @@ class BrowseListingsPage extends StatelessWidget {
                         onPressed: l.pending
                             ? null
                             : () async {
-                                // fetch owner; in a real app we'd denormalize ownerId on listing
-                                await svc.createSwap(listingId: l.id, recipientId: l.ownerId);
+                                if (uid == null) return;
+                                // Get user's available books (not pending)
+                                final myBooks = await svc.streamMyListings(uid).first;
+                                final available = myBooks.where((b) => !b.pending).toList();
+                                
+                                if (!context.mounted) return;
+                                final selectedBook = await showSelectBookDialog(context, available);
+                                
+                                if (selectedBook == null) return;
+                                
+                                await svc.createSwap(
+                                  listingId: l.id,
+                                  offeredBookId: selectedBook.id,
+                                  recipientId: l.ownerId,
+                                );
                                 if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Swap requested')));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Swap requested')),
+                                  );
                                 }
                               },
                         child: const Text('Swap'),

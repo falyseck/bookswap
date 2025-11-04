@@ -30,7 +30,8 @@ String swapStatusToString(SwapStatus s) {
 
 class SwapOffer {
   final String id;
-  final String listingId;
+  final String listingId; // The book the sender wants (recipient's book)
+  final String offeredBookId; // The book the sender is offering
   final String senderId;
   final String recipientId;
   final SwapStatus status;
@@ -39,6 +40,7 @@ class SwapOffer {
   SwapOffer({
     required this.id,
     required this.listingId,
+    required this.offeredBookId,
     required this.senderId,
     required this.recipientId,
     required this.status,
@@ -50,6 +52,7 @@ class SwapOffer {
     return SwapOffer(
       id: doc.id,
       listingId: data['listingId'] ?? '',
+      offeredBookId: data['offeredBookId'] ?? '',
       senderId: data['senderId'] ?? '',
       recipientId: data['recipientId'] ?? '',
       status: swapStatusFromString((data['status'] ?? 'pending') as String),
@@ -59,6 +62,7 @@ class SwapOffer {
 
   Map<String, dynamic> toMap() => {
         'listingId': listingId,
+        'offeredBookId': offeredBookId,
         'senderId': senderId,
         'recipientId': recipientId,
         'status': swapStatusToString(status),

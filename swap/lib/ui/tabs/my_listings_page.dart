@@ -4,7 +4,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/book_listing.dart';
 import '../../services/firestore_service.dart';
 import '../../models/swap_offer.dart';
+import '../../services/chat_service.dart';
 import '../listings/edit_listing_page.dart';
+import '../threads/chat_screen.dart';
 
 class MyListingsPage extends StatelessWidget {
   const MyListingsPage({super.key});
@@ -59,9 +61,9 @@ class MyListingsPage extends StatelessWidget {
                       );
                     },
                   ),
-                  // My Offers
+                  // My Offers - Shows all offers (sent and received)
                   StreamBuilder<List<SwapOffer>>(
-                    stream: svc.streamMyOffers(uid),
+                    stream: svc.streamAllMyOffers(uid),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
@@ -73,9 +75,97 @@ class MyListingsPage extends StatelessWidget {
                         separatorBuilder: (_, __) => const Divider(height: 1),
                         itemBuilder: (context, index) {
                           final o = offers[index];
-                          return ListTile(
-                            title: Text('Offer for listing ${o.listingId}'),
-                            subtitle: Text('Status: ${_statusLabel(o.status)}'),
+                          final isRecipient = o.recipientId == uid;
+                          final isSender = o.senderId == uid;
+                          return FutureBuilder<Map<String, BookListing?>>(
+                            future: Future.wait([
+                              svc.getListing(o.listingId),
+                              svc.getListing(o.offeredBookId),
+                            ]).then((list) => {
+                              'wantedBook': list[0],
+                              'offeredBook': list[1],
+                            }),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState == ConnectionState.waiting) {
+                                return const ListTile(
+                                  title: Text('Loading...'),
+                                  leading: CircularProgressIndicator(),
+                                );
+                              }
+                              final wantedBook = snapshot.data?['wantedBook'];
+                              final offeredBook = snapshot.data?['offeredBook'];
+                              return Card(
+                                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                child: ListTile(
+                                  title: Text(isRecipient
+                                      ? '${offeredBook?.title ?? 'Unknown'} → ${wantedBook?.title ?? 'Unknown'}'
+                                      : '${offeredBook?.title ?? 'Unknown'} → ${wantedBook?.title ?? 'Unknown'}'),
+                                  subtitle: Text(isRecipient
+                                      ? 'They want your "${wantedBook?.title ?? 'Unknown'}" and offer "${offeredBook?.title ?? 'Unknown'}"'
+                                      : 'You want "${wantedBook?.title ?? 'Unknown'}" and offer "${offeredBook?.title ?? 'Unknown'}"'),
+                                  isThreeLine: true,
+                                  trailing: o.status == SwapStatus.pending
+                                      ? Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            IconButton(
+                                              icon: const Icon(Icons.chat_bubble_outline),
+                                              tooltip: 'Chat',
+                                              onPressed: () async {
+                                                final threadId = await ChatService.instance.createThreadIfNotExists(o.senderId, o.recipientId);
+                                                if (context.mounted) {
+                                                  Navigator.of(context).push(
+                                                    MaterialPageRoute(builder: (_) => ChatScreen(threadId: threadId)),
+                                                  );
+                                                }
+                                              },
+                                            ),
+                                            if (isRecipient) ...[
+                                              TextButton(
+                                                onPressed: () async {
+                                                  await svc.updateSwapStatusWithBooks(o.id, SwapStatus.rejected, o.listingId, o.offeredBookId);
+                                                  if (context.mounted) {
+                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                      const SnackBar(content: Text('Swap rejected. Books are now available.')),
+                                                    );
+                                                  }
+                                                },
+                                                child: const Text('Reject'),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              ElevatedButton(
+                                                onPressed: () async {
+                                                  await svc.updateSwapStatusWithBooks(o.id, SwapStatus.accepted, o.listingId, o.offeredBookId);
+                                                  // Books remain pending after acceptance (committed to swap)
+                                                  // Create chat thread
+                                                  await ChatService.instance.createThreadIfNotExists(o.senderId, o.recipientId);
+                                                  if (context.mounted) {
+                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                      const SnackBar(content: Text('Swap accepted! Chat available.')),
+                                                    );
+                                                  }
+                                                },
+                                                child: const Text('Accept'),
+                                              ),
+                                            ] else if (isSender) ...[
+                                              TextButton(
+                                                onPressed: () async {
+                                                  await svc.updateSwapStatusWithBooks(o.id, SwapStatus.cancelled, o.listingId, o.offeredBookId);
+                                                  if (context.mounted) {
+                                                    ScaffoldMessenger.of(context).showSnackBar(
+                                                      const SnackBar(content: Text('Swap cancelled. Books are now available.')),
+                                                    );
+                                                  }
+                                                },
+                                                child: const Text('Cancel'),
+                                              ),
+                                            ],
+                                          ],
+                                        )
+                                      : Text(_statusLabel(o.status)),
+                                ),
+                              );
+                            },
                           );
                         },
                       );
