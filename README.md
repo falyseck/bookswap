@@ -117,15 +117,6 @@ dart analyze
 
 ---
 
-## Troubleshooting
-
-If swap status or listings appear inconsistent between screens, check the following:
-
-1. Console logs while running the app for Firestore write errors. The app surfaces failures via SnackBars when a write fails.
-2. Verify Firestore security rules allow the current authenticated user to update `swaps` and `listings` documents.
-3. If a swap remains `pending` after acceptance, ensure the `updateSwapStatusWithBooks` method succeeded — look for printed errors in the console.
-4. If chats or threads are missing, verify `threads` documents use the expected `participantIds` array and messages are in the `messages` subcollection.
-
 Common developer commands:
 
 ```powershell
@@ -134,16 +125,7 @@ dart analyze
 flutter run -d <deviceId>
 ```
 
----
 
-## Contributing
-
-- Create a feature branch: `git checkout -b feat/short-description`
-- Follow the existing code style
-- Add tests where possible (unit/widget/integration)
-- Open a pull request with a clear description of the change
-
----
 
 ## Notes & Future work
 
@@ -154,7 +136,3 @@ flutter run -d <deviceId>
 
 ---
 
-If you want, I can also:
-
-- Generate a PDF version of this README or the `DESIGN.md` file.
-- Create a quick debug screen to show Firestore document shapes for easier troubleshooting.
